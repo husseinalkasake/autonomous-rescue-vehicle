@@ -10,7 +10,7 @@ If you want to use their IDE/Framework can follow steps below
 1. Install PlatformIO CLI https://docs.platformio.org/en/latest/installation.html
 2. Install IDE extension https://docs.platformio.org/en/latest/ide/vscode.html
 
-**ALTERNATIVELY** - To Not Use PlatformIO and Use Arduino IDE instead, Ignore all this and simply copy code from `main.cpp` to an Arduino IDE sketch and run/upload there. Final code will be contained in `main.cpp` anyway.
+**ALTERNATIVELY** - To Not Use PlatformIO and Use Arduino IDE instead, Ignore all this and simply copy code from `src/main.cpp` to an Arduino IDE sketch and run/upload there. Final code will be contained in `src/main.cpp` anyway.
 
 **PlatformIO commands**
 
