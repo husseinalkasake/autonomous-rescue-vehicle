@@ -34,3 +34,5 @@
 .pio/*
 .pio/build/*
 .vscode/*
+
+.vscode/
