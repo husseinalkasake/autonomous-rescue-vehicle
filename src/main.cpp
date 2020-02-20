@@ -69,7 +69,7 @@ void rightTurnRobot()
 
   // turn until angle matches expected one after turn
   while (
-      abs(getAngleSensor() - angleTare - (((turnCount * 90) % 360) + 90)) >
+      abs(getCompassSensor() - angleTare - (((turnCount * 90) % 360) + 90)) >
       ANGLE_TOLERANCE)
   {
   }
