@@ -21,8 +21,8 @@ VL53L1X sensor4;
 MPU9250 myIMU(MPU9250_ADDRESS, I2Cport, I2Cclock);
 
 // @TODO: Adjust tolerance to viable numbers
-#define STABILITY_TOLERANCE 50      // Assume degrees
-#define ANGLE_TOLERANCE 4           // Assume degrees
+#define STABILITY_TOLERANCE 200     // Assume degrees
+#define ANGLE_TOLERANCE 7           // Assume degrees
 #define FRONT_DISTANCE_TOLERANCE 10 // Assume cm
 #define SIDE_DISTANCE_TOLERANCE 10  // Assume cm
 
@@ -254,20 +254,6 @@ void updateIMU()
     // Serial.print(myIMU.my, 2); // right/left
     // Serial.print(", ");
     // Serial.println(myIMU.mz, 2); // sideways
-    myIMU.updateTime();
-
-    // Sensors x (y)-axis of the accelerometer is aligned with the y (x)-axis of
-    // the magnetometer; the magnetometer z-axis (+ down) is opposite to z-axis
-    // (+ up) of accelerometer and gyro! We have to make some allowance for this
-    // orientationmismatch in feeding the output to the quaternion filter. For the
-    // MPU-9250, we have chosen a magnetic rotation that keeps the sensor forward
-    // along the x-axis just like in the LSM9DS0 sensor. This rotation can be
-    // modified to allow any convenient orientation convention. This is ok by
-    // aircraft orientation standards! Pass gyro rate as rad/s
-    MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx * DEG_TO_RAD,
-                          myIMU.gy * DEG_TO_RAD, myIMU.gz * DEG_TO_RAD, myIMU.my,
-                          myIMU.mx, myIMU.mz, myIMU.deltat);
-
   }
 }
 
@@ -278,7 +264,7 @@ double getStableSensor()
 
 double getCompassSensor()
 {
-  return (((int)(0.22 * ((myIMU.my) + 900))) % 360);
+  return (((int)(0.4 * ((myIMU.my) + 1000))) % 360) - angleTare;
 }
 
 double getFrontDistanceSensor()
@@ -329,7 +315,7 @@ bool hasGoalReached()
 {
   // Processed Sensor Values
   double stabilityValue = (getStableSensor() - stabilityTare);
-  double angleValue = (getCompassSensor() - angleTare);
+  double angleValue = getCompassSensor();
   double tileDistanceFrontVal = getFrontDistanceSensor();
   double tileDistanceSideVal = getLeftDistanceSensor();
 
@@ -400,6 +386,12 @@ void loop()
     //delay(1000);
     readLaserSensors();
     updateIMU();
+
+    Serial.println("Rawvalue: " + String(myIMU.my));
+    Serial.println();
+
+    Serial.println("Compass: " + String(getCompassSensor()));
+    Serial.println();
 
     Serial.println("Angle Sensor PID Difference: " + String(angleInputDifference));
     Serial.println();
