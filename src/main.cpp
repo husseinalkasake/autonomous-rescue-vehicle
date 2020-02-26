@@ -10,8 +10,6 @@
 // Declare laser sensors
 VL53L1X sensor1;
 VL53L1X sensor2;
-VL53L1X sensor3;
-VL53L1X sensor4;
 
 // Declare IMU
 #define I2Cclock 400000
@@ -91,44 +89,14 @@ void setUpLaserSensors()
   }
   sensor2.setAddress(0x02);
 
-  pinMode(6, INPUT_PULLUP);
-  delay(150);
-  Serial.println("02");
-  sensor3.setTimeout(500);
-  if (!sensor3.init())
-  {
-    Serial.println("Failed to detect and initialize sensor3!");
-    while (1)
-      ;
-  }
-  sensor3.setAddress(0x03);
-
-  pinMode(7, INPUT_PULLUP);
-  delay(150);
-  Serial.println("03");
-  sensor4.setTimeout(500);
-  if (!sensor4.init())
-  {
-    Serial.println("Failed to detect and initialize sensor4!");
-    while (1)
-      ;
-  }
-  sensor4.setAddress(0x04);
-
   sensor1.setDistanceMode(VL53L1X::Long);
   sensor2.setDistanceMode(VL53L1X::Long);
-  sensor3.setDistanceMode(VL53L1X::Long);
-  sensor4.setDistanceMode(VL53L1X::Long);
 
   sensor1.setMeasurementTimingBudget(50000);
   sensor2.setMeasurementTimingBudget(50000);
-  sensor3.setMeasurementTimingBudget(50000);
-  sensor4.setMeasurementTimingBudget(50000);
 
   sensor1.startContinuous(50);
   sensor2.startContinuous(50);
-  sensor3.startContinuous(50);
-  sensor4.startContinuous(50);
 }
 
 void setUpIMU()
@@ -231,8 +199,6 @@ void readLaserSensors()
 {
   sensor1.read();
   sensor2.read();
-  sensor3.read();
-  sensor4.read();
 }
 
 void updateIMU()
