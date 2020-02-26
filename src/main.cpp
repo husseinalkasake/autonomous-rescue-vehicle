@@ -236,40 +236,26 @@ void updateIMU()
 {
   if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
   {
-    myIMU.readGyroData(myIMU.gyroCount);  // Read the x/y/z adc values
-    // myIMU.readMagData(myIMU.magCount); // Read the x/y/z adc values
+    myIMU.readMagData(myIMU.magCount); // Read the x/y/z adc values
 
     // Calculate the magnetometer values in milliGauss
     // Include factory calibration per data sheet and user environmental
     // corrections
     // Get actual magnetometer value, this depends on scale being set
-    // myIMU.mx = (float)myIMU.magCount[0] * myIMU.mRes * myIMU.factoryMagCalibration[0] - myIMU.magBias[0];
-    // myIMU.my = (float)myIMU.magCount[1] * myIMU.mRes * myIMU.factoryMagCalibration[1] - myIMU.magBias[1];
-    // myIMU.mz = (float)myIMU.magCount[2] * myIMU.mRes * myIMU.factoryMagCalibration[2] - myIMU.magBias[2];
+    myIMU.mx = (float)myIMU.magCount[0] * myIMU.mRes * myIMU.factoryMagCalibration[0] - myIMU.magBias[0];
+    myIMU.my = (float)myIMU.magCount[1] * myIMU.mRes * myIMU.factoryMagCalibration[1] - myIMU.magBias[1];
+    myIMU.mz = (float)myIMU.magCount[2] * myIMU.mRes * myIMU.factoryMagCalibration[2] - myIMU.magBias[2];
 
-
-    // Calculate the gyro value into actual degrees per second
-    // This depends on scale being set
-    myIMU.gx = (float)myIMU.gyroCount[0] * myIMU.gRes;
-    myIMU.gy = (float)myIMU.gyroCount[1] * myIMU.gRes;
-    myIMU.gz = (float)myIMU.gyroCount[2] * myIMU.gRes;
-
-    // Serial.print("Mag Yaw, Pitch, Roll: ");
-    // Serial.print(myIMU.mx, 2); // top/down
-    // Serial.print(", ");
-    // Serial.print(myIMU.my, 2); // right/left
-    // Serial.print(", ");
-    // Serial.println(myIMU.mz, 2); // sideways
-
-    Serial.print("Gyro Yaw, Pitch, Roll: ");
-    Serial.print(myIMU.gx, 2); // top/down
+    Serial.print("Mag Yaw, Pitch, Roll: ");
+    Serial.print(myIMU.mx, 2); // top/down
     Serial.print(", ");
-    Serial.print(myIMU.gy, 2); // right/left
+    Serial.print(myIMU.my, 2); // right/left
     Serial.print(", ");
-    Serial.println(myIMU.gz, 2); // sideways
+    Serial.println(myIMU.mz, 2); // sideways
   }
 }
 
+// TODO: GET ANGLE BETWEEN X (or Y, will test to see) AND Z AXIS (similar to compass)
 double getStableSensor()
 {
   return myIMU.mx;
@@ -277,7 +263,7 @@ double getStableSensor()
 
 double getCompassSensor()
 {
-  return (((int)(0.4 * ((myIMU.my) + 1000))) % 360) - angleTare;
+  return (atan2(myIMU.my, myIMU.mx) * 180. / PI) + 180 - angleTare;
 }
 
 double getFrontDistanceSensor()
@@ -303,9 +289,23 @@ void stopRobot()
 }
 void drive(int leftvalue, int rightvalue)
 {
-  motorLeft.write(50);
-  motorRight.write(50);
-  delay(100);
+  if (leftvalue <= 90)
+  {
+    motorLeft.write(50);
+  }
+  else
+  {
+    motorLeft.write(130);
+  }
+  if (rightvalue <= 90)
+  {
+    motorLeft.write(50);
+  }
+  else
+  {
+    motorLeft.write(130);
+  }
+  delay(500);
   motorLeft.write(leftvalue);
   motorRight.write(rightvalue);
 }
@@ -345,6 +345,7 @@ bool hasGoalReached()
   {
     // Serial.println("UNSTABLE");
     // @TODO: Set both left and right motors to a sensible blind forward distance that we know works
+    // drive(100,100);
     return false;
   }
 
@@ -353,7 +354,8 @@ bool hasGoalReached()
   {
     // Serial.println("ANGLE HEADING FUCKED");
     // @TODO: set right and left motor to opposite magnitude
-    //drive((map(angleInputDifference,-2000,2000,-90,90)+motorzerooffset), (map(angleInputDifference,-2000,2000,-90,90)+motorzerooffset+jaggedValue));
+    // drive
+    //drive((map(angleInputDifference,-2000,2000,-90,90)+motorzerooffset), (map(angleInputDifference,-2000,2000,-90,90)+motorzerooffset));
     return false;
   }
 
@@ -362,7 +364,7 @@ bool hasGoalReached()
   {
     // Serial.println("SIDE DISTANCE FUCKED");
     // @TODO: set right and left motor to same magnitude
-    //drive((map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset), (map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset+jaggedValue));
+    //drive((map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset), (-map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset-jaggedValue));
     return false;
   }
 
@@ -371,7 +373,7 @@ bool hasGoalReached()
   {
     // Serial.println("FRONT DISTANCE FUCKED");
     // @TODO: set right and left motor to same magnitude
-    //drive((map(sideDistanceDifference,-2000,2000,-90,90)+motorzerooffset), (map(sideDistanceDifference,-2000,2000,-90,90)+motorzerooffset));
+    //drive((map(sideDistanceDifference,-2000,2000,-90,90)+motorzerooffset), (-map(sideDistanceDifference,-2000,2000,-90,90)+motorzerooffset));
     return false;
   }
 
@@ -391,7 +393,7 @@ void loop()
   // keep moving till goal reached
   if (!reachedGoal)
   {
-    delay(500);
+    delay(250);
     readLaserSensors();
     updateIMU();
 
@@ -413,12 +415,12 @@ void loop()
     // Serial.println("Rawvalue: " + String(myIMU.my));
     // Serial.println();
 
-    // Serial.println("Compass: " + String(getCompassSensor()));
-    // Serial.println();
+    Serial.println("Compass: " + String(getCompassSensor()));
+    Serial.println();
 
     Serial.println("Turncount:" + String(turnCount));
-    
-    Serial.println("MOTOR SPEED VALUE: " + String(map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset));
+
+    Serial.println("MOTOR SPEED VALUE: " + String(map(frontDistanceDifference, -2000, 2000, -90, 90) + motorzerooffset));
     Serial.println();
 
     reachedGoal = hasGoalReached();
