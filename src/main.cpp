@@ -1,17 +1,16 @@
 #include <Arduino.h>
-#include <PID_v1.h>
 #include <stdlib.h>
 #include <VL53L1X.h>
 #include <Wire.h>
-
 #include "MPU9250.h"
 #include "quaternionFilters.h"
-
 #include <Servo.h>
 
 // Declare laser sensors
 VL53L1X sensor1;
 VL53L1X sensor2;
+VL53L1X sensor3;
+VL53L1X sensor4;
 
 // Declare IMU
 #define I2Cclock 400000
@@ -31,41 +30,32 @@ Servo motorRight;
 #define SIDE_DISTANCE_TOLERANCE 10  // Assume cm
 
 // Global Variables
-double tileDistance = 0;
+double tileDistance = 200; //@TODO:HardCode Tile Distance
+int jaggedValue = 5;
+int motorzerooffset = 90;
+double tileOffsetDistance = 0;
 double angleTare = 0;
 double stabilityTare = 0;
 int turnCount = 0;
-int jaggedValue = 5;
-int motorzerooffset = 90;
 bool reachedGoal = false;
-int zero = 0;
 int motorValue = 0;
 
-// PID Stuff
+// Difference Stuff
 double angleInputDifference = 0;
-double angleOutputPID = 0;
-PID anglePID(&angleInputDifference, &angleOutputPID, 0, 1, 10, 25, DIRECT);
-
 double frontDistanceDifference = 0;
-double frontDistanceOutputPID = 0;
-PID distanceFrontPID(&frontDistanceDifference, &frontDistanceOutputPID, 0, 1, 10, 25, DIRECT);
-
 double sideDistanceDifference = 0;
-double sideDistanceOutputPID = 0;
-PID distanceSidePID(&sideDistanceDifference, &sideDistanceOutputPID, 0, 1, 10, 25, DIRECT);
-
-// Scale Values
-// @TODO: input motor characterization scale here
-const double distanceScale = 1.00;
-const double angleScale = 1.00;
 
 // Sensor Setup
 void setUpLaserSensors()
 {
-  pinMode(5, OUTPUT);
   pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
   digitalWrite(4, LOW);
   digitalWrite(5, LOW);
+  digitalWrite(6, LOW);
+  digitalWrite(7, LOW);
 
   pinMode(4, INPUT_PULLUP);
   delay(150);
@@ -91,14 +81,44 @@ void setUpLaserSensors()
   }
   sensor2.setAddress(0x02);
 
+  pinMode(6, INPUT_PULLUP);
+  delay(150);
+  Serial.println("00");
+  sensor3.setTimeout(500);
+  if (!sensor3.init())
+  {
+    Serial.println("Failed to detect and initialize sensor3!");
+    while (1)
+      ;
+  }
+  sensor3.setAddress(0x03);
+
+  pinMode(7, INPUT_PULLUP);
+  delay(150);
+  Serial.println("01");
+  sensor4.setTimeout(500);
+  if (!sensor4.init())
+  {
+    Serial.println("Failed to detect and initialize sensor4!");
+    while (1)
+      ;
+  }
+  sensor4.setAddress(0x04);
+
   sensor1.setDistanceMode(VL53L1X::Long);
   sensor2.setDistanceMode(VL53L1X::Long);
+  sensor3.setDistanceMode(VL53L1X::Long);
+  sensor4.setDistanceMode(VL53L1X::Long);
 
   sensor1.setMeasurementTimingBudget(50000);
   sensor2.setMeasurementTimingBudget(50000);
+  sensor3.setMeasurementTimingBudget(50000);
+  sensor4.setMeasurementTimingBudget(50000);
 
   sensor1.startContinuous(50);
   sensor2.startContinuous(50);
+  sensor3.startContinuous(50);
+  sensor4.startContinuous(50);
 }
 
 void setUpIMU()
@@ -216,21 +236,37 @@ void updateIMU()
 {
   if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
   {
-    myIMU.readMagData(myIMU.magCount); // Read the x/y/z adc values
+    myIMU.readGyroData(myIMU.gyroCount);  // Read the x/y/z adc values
+    // myIMU.readMagData(myIMU.magCount); // Read the x/y/z adc values
 
     // Calculate the magnetometer values in milliGauss
     // Include factory calibration per data sheet and user environmental
     // corrections
     // Get actual magnetometer value, this depends on scale being set
-    myIMU.mx = (float)myIMU.magCount[0] * myIMU.mRes * myIMU.factoryMagCalibration[0] - myIMU.magBias[0];
-    myIMU.my = (float)myIMU.magCount[1] * myIMU.mRes * myIMU.factoryMagCalibration[1] - myIMU.magBias[1];
-    myIMU.mz = (float)myIMU.magCount[2] * myIMU.mRes * myIMU.factoryMagCalibration[2] - myIMU.magBias[2];
+    // myIMU.mx = (float)myIMU.magCount[0] * myIMU.mRes * myIMU.factoryMagCalibration[0] - myIMU.magBias[0];
+    // myIMU.my = (float)myIMU.magCount[1] * myIMU.mRes * myIMU.factoryMagCalibration[1] - myIMU.magBias[1];
+    // myIMU.mz = (float)myIMU.magCount[2] * myIMU.mRes * myIMU.factoryMagCalibration[2] - myIMU.magBias[2];
+
+
+    // Calculate the gyro value into actual degrees per second
+    // This depends on scale being set
+    myIMU.gx = (float)myIMU.gyroCount[0] * myIMU.gRes;
+    myIMU.gy = (float)myIMU.gyroCount[1] * myIMU.gRes;
+    myIMU.gz = (float)myIMU.gyroCount[2] * myIMU.gRes;
+
     // Serial.print("Mag Yaw, Pitch, Roll: ");
     // Serial.print(myIMU.mx, 2); // top/down
     // Serial.print(", ");
     // Serial.print(myIMU.my, 2); // right/left
     // Serial.print(", ");
     // Serial.println(myIMU.mz, 2); // sideways
+
+    Serial.print("Gyro Yaw, Pitch, Roll: ");
+    Serial.print(myIMU.gx, 2); // top/down
+    Serial.print(", ");
+    Serial.print(myIMU.gy, 2); // right/left
+    Serial.print(", ");
+    Serial.println(myIMU.gz, 2); // sideways
   }
 }
 
@@ -265,13 +301,13 @@ void stopRobot()
   motorLeft.write(90);
   motorRight.write(90);
 }
-void driveForward(int value)
+void drive(int leftvalue, int rightvalue)
 {
   motorLeft.write(50);
   motorRight.write(50);
   delay(100);
-  motorLeft.write(value);
-  motorRight.write(value);
+  motorLeft.write(leftvalue);
+  motorRight.write(rightvalue);
 }
 
 void setup()
@@ -281,22 +317,14 @@ void setup()
   Wire.begin();
   Wire.setClock(400000);
 
-  //Configuration of PID's
-  anglePID.SetMode(AUTOMATIC);
-  distanceFrontPID.SetMode(AUTOMATIC);
-  distanceSidePID.SetMode(AUTOMATIC);
-
   setUpLaserSensors();
   setUpIMU();
   updateIMU();
 
   // set values
-  tileDistance = getLeftDistanceSensor() * 2;
+  tileOffsetDistance = getLeftDistanceSensor() * 2;
   angleTare = getCompassSensor();
   stabilityTare = getStableSensor();
-
-  // testing
-  tileDistance = 50;
 }
 
 bool hasGoalReached()
@@ -312,15 +340,10 @@ bool hasGoalReached()
   frontDistanceDifference = tileDistanceFrontVal - ((tileDistance * ((turnCount + 1) / 4)) + (tileDistance / 2.0));
   sideDistanceDifference = tileDistanceSideVal - ((tileDistance * ((turnCount) / 4)) + (tileDistance / 2.0));
 
-  // Compute PID
-  anglePID.Compute();
-  distanceFrontPID.Compute();
-  distanceSidePID.Compute();
-
   // Vehicle Tilted
   if (abs(stabilityValue) > STABILITY_TOLERANCE)
   {
-    Serial.println("UNSTABLE");
+    // Serial.println("UNSTABLE");
     // @TODO: Set both left and right motors to a sensible blind forward distance that we know works
     return false;
   }
@@ -328,30 +351,27 @@ bool hasGoalReached()
   // Vehicle Heading drifting
   if (abs(angleInputDifference) > ANGLE_TOLERANCE)
   {
-    Serial.println("ANGLE HEADING FUCKED");
+    // Serial.println("ANGLE HEADING FUCKED");
     // @TODO: set right and left motor to opposite magnitude
-    // leftmotor=(angleScale*angleOutputPID)+motorzerooffset;
-    // rightmotor=-(angleScale*angleOutputPID)+motorzerooffset;
+    //drive((map(angleInputDifference,-2000,2000,-90,90)+motorzerooffset), (map(angleInputDifference,-2000,2000,-90,90)+motorzerooffset+jaggedValue));
     return false;
   }
 
   // Vehicle Drifting right/left too much **NOTE: to Tarnpreet Side Tolereance should be large**
   if (abs(sideDistanceDifference) > SIDE_DISTANCE_TOLERANCE)
   {
-    Serial.println("SIDE DISTANCE FUCKED");
+    // Serial.println("SIDE DISTANCE FUCKED");
     // @TODO: set right and left motor to same magnitude
-    // leftmotor=(distanceScale*sideDistanceOutputPID)+motorzerooffset;
-    // rightmotor=(distanceScale*sideDistanceOutputPID)+jaggedvalue+motorzerooffset;
+    //drive((map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset), (map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset+jaggedValue));
     return false;
   }
 
   // Vehicle Front Travel Value
   if (abs(frontDistanceDifference) > FRONT_DISTANCE_TOLERANCE)
   {
-    Serial.println("FRONT DISTANCE FUCKED");
+    // Serial.println("FRONT DISTANCE FUCKED");
     // @TODO: set right and left motor to same magnitude
-    // leftmotor=(distanceScale*frontDistanceOutputPID)+motorzerooffset;
-    // rightmotor=(distanceScale*frontDistanceOutputPID)+motorzerooffset;
+    //drive((map(sideDistanceDifference,-2000,2000,-90,90)+motorzerooffset), (map(sideDistanceDifference,-2000,2000,-90,90)+motorzerooffset));
     return false;
   }
 
@@ -371,33 +391,35 @@ void loop()
   // keep moving till goal reached
   if (!reachedGoal)
   {
-    //delay(1000);
+    delay(500);
     readLaserSensors();
     updateIMU();
 
-    Serial.println("Scale: PID OUTPUTS" + String(angleOutputPID));
-    Serial.println();
-    Serial.println("Scale: PID OUTPUTS" + String(frontDistanceOutputPID));
-    Serial.println();
-    Serial.println("Scale: PID OUTPUTS" + String(sideDistanceOutputPID));
+    // Serial.println("Angle Sensor PID Difference: " + String(angleInputDifference));
+    // Serial.println();
+
+    // Serial.println("Front Sensor PID Difference: " + String(frontDistanceDifference));
+    // Serial.println();
+
+    // Serial.println("Side Sensor PID Difference: " + String(sideDistanceDifference));
+    // Serial.println();
+
+    Serial.println("RAW VALUE: " + String(getFrontDistanceSensor()));
     Serial.println();
 
-    Serial.println("Rawvalue: " + String(myIMU.my));
+    Serial.println("Difference VALUE: " + String(frontDistanceDifference));
     Serial.println();
 
-    Serial.println("Compass: " + String(getCompassSensor()));
-    Serial.println();
+    // Serial.println("Rawvalue: " + String(myIMU.my));
+    // Serial.println();
 
-    Serial.println("Angle Sensor PID Difference: " + String(angleInputDifference));
-    Serial.println();
-
-    Serial.println("Front Sensor PID Difference: " + String(frontDistanceDifference));
-    Serial.println();
-
-    Serial.println("Side Sensor PID Difference: " + String(sideDistanceDifference));
-    Serial.println();
+    // Serial.println("Compass: " + String(getCompassSensor()));
+    // Serial.println();
 
     Serial.println("Turncount:" + String(turnCount));
+    
+    Serial.println("MOTOR SPEED VALUE: " + String(map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset));
+    Serial.println();
 
     reachedGoal = hasGoalReached();
   }
