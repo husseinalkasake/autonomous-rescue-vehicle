@@ -7,6 +7,8 @@
 #include "MPU9250.h"
 #include "quaternionFilters.h"
 
+#include <Servo.h>
+
 // Declare laser sensors
 VL53L1X sensor1;
 VL53L1X sensor2;
@@ -17,6 +19,10 @@ VL53L1X sensor2;
 #define MPU9250_ADDRESS MPU9250_ADDRESS_AD0
 
 MPU9250 myIMU(MPU9250_ADDRESS, I2Cport, I2Cclock);
+
+// Declare servo for motors
+Servo motorLeft;
+Servo motorRight;
 
 // @TODO: Adjust tolerance to viable numbers
 #define STABILITY_TOLERANCE 200     // Assume degrees
@@ -29,10 +35,11 @@ double tileDistance = 0;
 double angleTare = 0;
 double stabilityTare = 0;
 int turnCount = 0;
-int jaggedValue = 50;
-int motorzerooffset = 1500;
+int jaggedValue = 5;
+int motorzerooffset = 90;
 bool reachedGoal = false;
 int zero = 0;
+int motorValue = 0;
 
 // PID Stuff
 double angleInputDifference = 0;
@@ -52,18 +59,13 @@ PID distanceSidePID(&sideDistanceDifference, &sideDistanceOutputPID, 0, 1, 10, 2
 const double distanceScale = 1.00;
 const double angleScale = 1.00;
 
-// Sensor Mocks
-// TODO: RETURN ACTUAL SENSOR DATA
+// Sensor Setup
 void setUpLaserSensors()
 {
-  pinMode(7, OUTPUT);
-  pinMode(6, OUTPUT);
   pinMode(5, OUTPUT);
   pinMode(4, OUTPUT);
   digitalWrite(4, LOW);
   digitalWrite(5, LOW);
-  digitalWrite(6, LOW);
-  digitalWrite(7, LOW);
 
   pinMode(4, INPUT_PULLUP);
   delay(150);
@@ -195,6 +197,15 @@ void setUpIMU()
   }
 }
 
+void setUpMotors()
+{
+  // set pin, min and max values for each motor servo
+  // TODO: Update to actual pins
+  motorLeft.attach(8, 1000, 2000);
+  motorRight.attach(9, 1000, 2000);
+}
+
+// Sensor Update
 void readLaserSensors()
 {
   sensor1.read();
@@ -245,11 +256,22 @@ double getLeftDistanceSensor()
 // Motor stuff
 void stopRobot()
 {
+  // int sensorValue = 0;
+  // if (Serial.available() > 0)
+  // {
+  //   sensorValue = Serial.parseInt();
+  // }
   // TODO: Stop Robot
+  motorLeft.write(90);
+  motorRight.write(90);
 }
-void driveForward()
+void driveForward(int value)
 {
-  // TODO: Blind forward motor value
+  motorLeft.write(50);
+  motorRight.write(50);
+  delay(100);
+  motorLeft.write(value);
+  motorRight.write(value);
 }
 
 void setup()
@@ -352,6 +374,13 @@ void loop()
     //delay(1000);
     readLaserSensors();
     updateIMU();
+
+    Serial.println("Scale: PID OUTPUTS" + String(angleOutputPID));
+    Serial.println();
+    Serial.println("Scale: PID OUTPUTS" + String(frontDistanceOutputPID));
+    Serial.println();
+    Serial.println("Scale: PID OUTPUTS" + String(sideDistanceOutputPID));
+    Serial.println();
 
     Serial.println("Rawvalue: " + String(myIMU.my));
     Serial.println();
