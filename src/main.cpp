@@ -314,7 +314,7 @@ void drive(int leftValue, int rightValue)
 }
 
 // return motor value based on difference from desired point
-void getMotorValue(double differenceFromDesired)
+long getMotorValue(double differenceFromDesired)
 {
   return map(differenceFromDesired, -1000, 1000, -90, 90);
 }
