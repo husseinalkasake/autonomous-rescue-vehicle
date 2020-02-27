@@ -246,11 +246,6 @@ double getLeftDistanceSensor()
 }
 
 // Motor stuff
-void stopRobot()
-{
-  drive(MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
-}
-
 int safetyMotor(int value)
 {
   if (value > MOTOR_MAX)
@@ -292,6 +287,11 @@ void drive(int leftValue, int rightValue)
   delay(500);
   motorLeft.write(leftValue);
   motorRight.write(rightValue);
+}
+
+void stopRobot()
+{
+  drive(MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
 }
 
 // return motor value based on difference from desired point
