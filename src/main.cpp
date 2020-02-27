@@ -12,9 +12,6 @@
 // Declare laser sensors
 VL53L1X frontSensor;
 VL53L1X leftSensor;
-// TODO: REMOVE THESE SENSORS AND ALL SETUP RELATED TO THEM!!! LEFT TEMPORARILY DUE TO WEIRD ISSUE OF SENSORS NOT RESPONDING
-VL53L1X sensor3;
-VL53L1X sensor4;
 
 // Declare IMU
 #define MPU9250_ADDRESS MPU9250_ADDRESS_AD0
@@ -84,44 +81,14 @@ void setUpLaserSensors()
   }
   leftSensor.setAddress(0x02);
 
-  pinMode(6, INPUT_PULLUP);
-  delay(150);
-  Serial.println("00");
-  sensor3.setTimeout(500);
-  if (!sensor3.init())
-  {
-    Serial.println("Failed to detect and initialize sensor3!");
-    while (1)
-      ;
-  }
-  sensor3.setAddress(0x03);
-
-  pinMode(7, INPUT_PULLUP);
-  delay(150);
-  Serial.println("01");
-  sensor4.setTimeout(500);
-  if (!sensor4.init())
-  {
-    Serial.println("Failed to detect and initialize sensor4!");
-    while (1)
-      ;
-  }
-  sensor4.setAddress(0x04);
-
   frontSensor.setDistanceMode(VL53L1X::Long);
   leftSensor.setDistanceMode(VL53L1X::Long);
-  sensor3.setDistanceMode(VL53L1X::Long);
-  sensor4.setDistanceMode(VL53L1X::Long);
 
   frontSensor.setMeasurementTimingBudget(50000);
   leftSensor.setMeasurementTimingBudget(50000);
-  sensor3.setMeasurementTimingBudget(50000);
-  sensor4.setMeasurementTimingBudget(50000);
 
   frontSensor.startContinuous(50);
   leftSensor.startContinuous(50);
-  sensor3.startContinuous(50);
-  sensor4.startContinuous(50);
 }
 
 // IMU Setup (from library example code)
@@ -250,12 +217,12 @@ void updateIMU()
     myIMU.my = (float)myIMU.magCount[1] * myIMU.mRes * myIMU.factoryMagCalibration[1] - myIMU.magBias[1];
     myIMU.mz = (float)myIMU.magCount[2] * myIMU.mRes * myIMU.factoryMagCalibration[2] - myIMU.magBias[2];
 
-    Serial.print("Mag Yaw, Pitch, Roll: ");
-    Serial.print(myIMU.mx, 2); // top/down
-    Serial.print(", ");
-    Serial.print(myIMU.my, 2); // right/left
-    Serial.print(", ");
-    Serial.println(myIMU.mz, 2); // sideways
+    // Serial.print("Mag Yaw, Pitch, Roll: ");
+    // Serial.print(myIMU.mx, 2); // top/down
+    // Serial.print(", ");
+    // Serial.print(myIMU.my, 2); // right/left
+    // Serial.print(", ");
+    // Serial.println(myIMU.mz, 2); // sideways
   }
 }
 
@@ -357,6 +324,7 @@ bool hasGoalReached()
   if (abs(angleInputDifference) > ANGLE_TOLERANCE)
   {
     // Set right and left motor to opposite magnitude (one is reversed so same value)
+    Serial.println("HEADING OFF");
     long motorValue = getMotorValue(angleInputDifference) + motorZeroOffset;
     drive(motorValue, motorValue);
     return false;
@@ -366,6 +334,7 @@ bool hasGoalReached()
   if (abs(sideDistanceDifference) > SIDE_DISTANCE_TOLERANCE)
   {
     // Set right and left motor to same magnitude (one is reversed so one is opposite value + jagged value)
+    Serial.println("SIDE DISTANCE OFF");
     long motorValue = getMotorValue(sideDistanceDifference) + motorZeroOffset;
     drive(motorValue, (-motorValue - jaggedValue));
     return false;
@@ -375,6 +344,7 @@ bool hasGoalReached()
   if (abs(frontDistanceDifference) > FRONT_DISTANCE_TOLERANCE)
   {
     // Set right and left motor to same magnitude
+    Serial.println("FRONT DISTANCE OFF");
     long motorValue = getMotorValue(frontDistanceDifference) + motorZeroOffset;
     drive(motorValue, -motorValue);
     return false;
