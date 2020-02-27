@@ -12,6 +12,8 @@
 // Declare laser sensors
 VL53L1X frontSensor;
 VL53L1X leftSensor;
+VL53L1X sensor;
+VL53L1X sensor2;
 
 // Declare IMU
 #define MPU9250_ADDRESS MPU9250_ADDRESS_AD0
@@ -23,13 +25,13 @@ Servo motorRight;
 
 // Constant Definitions
 // TODO: Adjust tolerance to viable numbers
-#define STABILITY_TOLERANCE 200     // Assume degrees
-#define ANGLE_TOLERANCE 5           // Assume degrees
-#define FRONT_DISTANCE_TOLERANCE 10 // Assume cm
-#define SIDE_DISTANCE_TOLERANCE 10  // Assume cm
-#define MOTOR_MAX 130
-#define MOTOR_MIN 50
-#define TILE_DISTANCE 200
+#define STABILITY_TOLERANCE 200      // Assume degrees
+#define ANGLE_TOLERANCE 10           // Assume degrees
+#define FRONT_DISTANCE_TOLERANCE 150 // Assume cm
+#define SIDE_DISTANCE_TOLERANCE 150  // Assume cm
+#define MOTOR_MAX 110
+#define MOTOR_MIN 70
+#define TILE_DISTANCE 250
 #define JAGGED_VALUE 5
 #define MOTOR_ZERO_OFFSET 90
 #define DISTANCE_SCALE 1000
@@ -50,12 +52,16 @@ double sideDistanceDifference = 0;
 // ToF Laser Sensor Setup
 void setUpLaserSensors()
 {
-  pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT);
-  digitalWrite(4, LOW);
-  digitalWrite(5, LOW);
+  pinMode(11, OUTPUT);
+  pinMode(12, OUTPUT);
+  pinMode(13, OUTPUT);
+  pinMode(8, OUTPUT);
+  digitalWrite(11, LOW);
+  digitalWrite(12, LOW);
+  digitalWrite(13, LOW);
+  digitalWrite(8, LOW);
 
-  pinMode(4, INPUT_PULLUP);
+  pinMode(11, INPUT_PULLUP);
   delay(150);
   Serial.println("00");
   frontSensor.setTimeout(500);
@@ -67,7 +73,7 @@ void setUpLaserSensors()
   }
   frontSensor.setAddress(0x01);
 
-  pinMode(5, INPUT_PULLUP);
+  pinMode(13, INPUT_PULLUP);
   delay(150);
   Serial.println("01");
   leftSensor.setTimeout(500);
@@ -79,14 +85,44 @@ void setUpLaserSensors()
   }
   leftSensor.setAddress(0x02);
 
+  pinMode(8, INPUT_PULLUP);
+  delay(150);
+  Serial.println("02");
+  sensor.setTimeout(500);
+  if (!sensor.init())
+  {
+    Serial.println("Failed to detect and initialize sensor!");
+    while (1)
+      ;
+  }
+  leftSensor.setAddress(0x03);
+
+  pinMode(12, INPUT_PULLUP);
+  delay(150);
+  Serial.println("03");
+  sensor2.setTimeout(500);
+  if (!sensor2.init())
+  {
+    Serial.println("Failed to detect and initialize sensor2!");
+    while (1)
+      ;
+  }
+  leftSensor.setAddress(0x04);
+
   frontSensor.setDistanceMode(VL53L1X::Long);
   leftSensor.setDistanceMode(VL53L1X::Long);
+  sensor.setDistanceMode(VL53L1X::Long);
+  sensor2.setDistanceMode(VL53L1X::Long);
 
   frontSensor.setMeasurementTimingBudget(50000);
   leftSensor.setMeasurementTimingBudget(50000);
+  sensor.setMeasurementTimingBudget(50000);
+  sensor2.setMeasurementTimingBudget(50000);
 
   frontSensor.startContinuous(50);
   leftSensor.startContinuous(50);
+  sensor.startContinuous(50);
+  sensor2.startContinuous(50);
 }
 
 // IMU Setup (from library example code)
@@ -190,8 +226,8 @@ void setUpMotors()
 {
   // set pin, min and max values for each motor servo
   // TODO: Update to actual pins
-  motorLeft.attach(8, 1000, 2000);
-  motorRight.attach(9, 1000, 2000);
+  motorLeft.attach(9, 1000, 2000);
+  motorRight.attach(10, 1000, 2000);
 }
 
 // Sensor Update
@@ -246,11 +282,6 @@ double getLeftDistanceSensor()
 }
 
 // Motor stuff
-void stopRobot()
-{
-  drive(MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
-}
-
 int safetyMotor(int value)
 {
   if (value > MOTOR_MAX)
@@ -289,9 +320,16 @@ void drive(int leftValue, int rightValue)
   }
 
   // Set actual motor values after delay
-  delay(500);
+  delay(1000);
   motorLeft.write(leftValue);
   motorRight.write(rightValue);
+  Serial.println("LEFT VALUE" + String(leftValue));
+  Serial.println("RIGHT VALUE" + String(rightValue));
+}
+
+void stopRobot()
+{
+  drive(MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
 }
 
 // return motor value based on difference from desired point
@@ -318,9 +356,14 @@ void setup()
   updateIMU();
 
   // set values
-  tileOffsetDistance = getLeftDistanceSensor();
+  // tileOffsetDistance = getLeftDistanceSensor();
   angleTare = getCompassSensor();
   stabilityTare = getStableSensor();
+
+  setUpMotors();
+  motorLeft.write(89);
+  motorRight.write(89);
+  delay(1000);
 }
 
 // TODO: COMMENT OUT SERIAL PRINTS FOR FINAL CODE
@@ -390,6 +433,12 @@ void loop()
     delay(250);
     readLaserSensors();
     updateIMU();
+
+    Serial.println("FRONT DISTANCE: " + String(getFrontDistanceSensor()));
+    Serial.println();
+
+    Serial.println("SIDE DISTANCE: " + String(getLeftDistanceSensor()));
+    Serial.println();
 
     Serial.println("Angle Sensor PID Difference: " + String(angleInputDifference));
     Serial.println();
