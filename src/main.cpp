@@ -21,19 +21,21 @@ MPU9250 myIMU(MPU9250_ADDRESS, Wire, WIRE_CLOCK);
 Servo motorLeft;
 Servo motorRight;
 
-// Sensor Definitions
+// Constant Definitions
 // TODO: Adjust tolerance to viable numbers
 #define STABILITY_TOLERANCE 200     // Assume degrees
-#define ANGLE_TOLERANCE 7           // Assume degrees
+#define ANGLE_TOLERANCE 5           // Assume degrees
 #define FRONT_DISTANCE_TOLERANCE 10 // Assume cm
 #define SIDE_DISTANCE_TOLERANCE 10  // Assume cm
+#define MOTOR_MAX 130
+#define MOTOR_MIN 50
+#define TILE_DISTANCE 200
+#define JAGGED_VALUE 5
+#define MOTOR_ZERO_OFFSET 90
+#define DISTANCE_SCALE 1000
+#define ANGLE_SCALE 360
 
-// Hardcoded Global Variables
-const double tileDistance = 200;
-const int jaggedValue = 5;
-const int motorZeroOffset = 90;
-
-// Changeable Global Variables
+// Global Variables
 double tileOffsetDistance = 0;
 double angleTare = 0;
 double stabilityTare = 0;
@@ -241,6 +243,7 @@ double getFrontDistanceSensor()
 {
   return frontSensor.ranging_data.range_mm;
 }
+
 double getLeftDistanceSensor()
 {
   return leftSensor.ranging_data.range_mm;
@@ -249,28 +252,42 @@ double getLeftDistanceSensor()
 // Motor stuff
 void stopRobot()
 {
-  motorLeft.write(90);
-  motorRight.write(90);
+  drive(MOTOR_ZERO_OFFSET,MOTOR_ZERO_OFFSET);
 }
+
+int safetyMotor(int value)
+{
+  if (value > MOTOR_MAX ){
+    return MOTOR_MAX;
+  }
+  if (value < MOTOR_MIN ){
+    return MOTOR_MIN;
+  }
+  return value;
+}
+
 void drive(int leftValue, int rightValue)
 {
+  leftValue = safetyMotor(leftValue);
+  rightValue = safetyMotor(rightValue);
+
   // jump start motors when setting speed to fix issue of lack of torque
-  if (leftValue <= 90)
+  if (leftValue <= MOTOR_ZERO_OFFSET)
   {
-    motorLeft.write(50);
+    motorLeft.write(MOTOR_MIN);
   }
   else
   {
-    motorLeft.write(130);
+    motorLeft.write(MOTOR_MAX);
   }
 
-  if (rightValue <= 90)
+  if (rightValue <= MOTOR_ZERO_OFFSET)
   {
-    motorLeft.write(50);
+    motorRight.write(MOTOR_MIN);
   }
   else
   {
-    motorLeft.write(130);
+    motorRight.write(MOTOR_MAX);
   }
 
   // Set actual motor values after delay
@@ -280,9 +297,14 @@ void drive(int leftValue, int rightValue)
 }
 
 // return motor value based on difference from desired point
-long getMotorValue(double differenceFromDesired)
+long getDistanceToMotorValue(double differenceFromDesired)
 {
-  return map(differenceFromDesired, -1000, 1000, -90, 90);
+  return map(differenceFromDesired, -DISTANCE_SCALE, DISTANCE_SCALE, -MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
+}
+
+long getAngleToMotorValue(double differenceFromDesired)
+{
+  return map(differenceFromDesired, -ANGLE_SCALE, ANGLE_SCALE, -MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
 }
 
 void setup()
@@ -298,7 +320,7 @@ void setup()
   updateIMU();
 
   // set values
-  tileOffsetDistance = getLeftDistanceSensor() * 2;
+  tileOffsetDistance = getLeftDistanceSensor();
   angleTare = getCompassSensor();
   stabilityTare = getStableSensor();
 }
@@ -308,15 +330,15 @@ bool hasGoalReached()
 {
   // Desired Point Differences
   angleInputDifference = getCompassSensor() - ((turnCount * 90) % 360);
-  frontDistanceDifference = getFrontDistanceSensor() - ((tileDistance * ((turnCount + 1) / 4)) + tileOffsetDistance);
-  sideDistanceDifference = getLeftDistanceSensor() - ((tileDistance * ((turnCount) / 4)) + tileOffsetDistance);
+  frontDistanceDifference = getFrontDistanceSensor() - ((TILE_DISTANCE * ((turnCount + 1) / 4)) + tileOffsetDistance);
+  sideDistanceDifference = getLeftDistanceSensor() - ((TILE_DISTANCE * ((turnCount) / 4)) + tileOffsetDistance);
 
   // Vehicle Tilted
   if (abs(getStableSensor()) > STABILITY_TOLERANCE)
   {
     Serial.println("UNSTABLE");
     // Set both left and right motors to a sensible blind forward distance that we know works
-    drive(80, 110);
+    drive(MOTOR_ZERO_OFFSET-10, MOTOR_ZERO_OFFSET+10);
     return false;
   }
 
@@ -325,7 +347,7 @@ bool hasGoalReached()
   {
     // Set right and left motor to opposite magnitude (one is reversed so same value)
     Serial.println("HEADING OFF");
-    long motorValue = getMotorValue(angleInputDifference) + motorZeroOffset;
+    long motorValue = getAngleToMotorValue(angleInputDifference) + MOTOR_ZERO_OFFSET;
     drive(motorValue, motorValue);
     return false;
   }
@@ -335,8 +357,8 @@ bool hasGoalReached()
   {
     // Set right and left motor to same magnitude (one is reversed so one is opposite value + jagged value)
     Serial.println("SIDE DISTANCE OFF");
-    long motorValue = getMotorValue(sideDistanceDifference) + motorZeroOffset;
-    drive(motorValue, (-motorValue - jaggedValue));
+    long motorValue = getDistanceToMotorValue(sideDistanceDifference) + MOTOR_ZERO_OFFSET;
+    drive(motorValue, (-motorValue - JAGGED_VALUE));
     return false;
   }
 
@@ -345,7 +367,7 @@ bool hasGoalReached()
   {
     // Set right and left motor to same magnitude
     Serial.println("FRONT DISTANCE OFF");
-    long motorValue = getMotorValue(frontDistanceDifference) + motorZeroOffset;
+    long motorValue = getDistanceToMotorValue(frontDistanceDifference) + MOTOR_ZERO_OFFSET;
     drive(motorValue, -motorValue);
     return false;
   }
@@ -382,7 +404,7 @@ void loop()
 
     Serial.println("Turncount:" + String(turnCount));
 
-    Serial.println("MOTOR SPEED VALUE: " + String(map(frontDistanceDifference, -2000, 2000, -90, 90) + motorZeroOffset));
+    Serial.println("MOTOR SPEED VALUE: " + String(map(frontDistanceDifference, -DISTANCE_SCALE, DISTANCE_SCALE, -MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET) + MOTOR_ZERO_OFFSET));
     Serial.println();
 
     reachedGoal = hasGoalReached();
