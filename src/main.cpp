@@ -361,12 +361,14 @@ void constructionCheckDemo()
     Serial.println("RIGHT TURN");
     long motorValue = getAngleToMotorValue(angleInputDifference) + MOTOR_ZERO_OFFSET;
     drive(motorValue, motorValue);
+    return;
   }
   else if (sideDistanceWithinTolerance && frontDistanceWithinTolerance)
   {
     // increment turn count so right turn can happen next time due to angle difference
     // WORST CASE SCENARIO HARDCODE RIGHT TURN FOR DEMO
     turnCount++;
+    return;
   }
   else if (sideDistanceWithinTolerance)
   {
@@ -374,7 +376,6 @@ void constructionCheckDemo()
     Serial.println("MOVE FORWARD");
     drive(MOTOR_ZERO_OFFSET - 10, MOTOR_ZERO_OFFSET + 10);
     delay(2000);
-    stopRobot();
   }
   else if (frontDistanceWithinTolerance)
   {
@@ -383,12 +384,8 @@ void constructionCheckDemo()
     long motorValue = getDistanceToMotorValue(frontDistanceDifference) + MOTOR_ZERO_OFFSET;
     drive(motorValue, -motorValue);
     delay(2000);
-    stopRobot();
   }
-  else
-  {
-    stopRobot();
-  }
+  stopRobot();
 }
 
 void setup()
