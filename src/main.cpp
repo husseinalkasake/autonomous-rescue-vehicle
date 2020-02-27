@@ -352,7 +352,6 @@ bool hasGoalReached()
   // Vehicle Heading drifting
   if (abs(angleInputDifference) > ANGLE_TOLERANCE)
   {
-    // Serial.println("ANGLE HEADING FUCKED");
     // @TODO: set right and left motor to opposite magnitude
     // drive
     //drive((map(angleInputDifference,-2000,2000,-90,90)+motorzerooffset), (map(angleInputDifference,-2000,2000,-90,90)+motorzerooffset));
@@ -362,7 +361,6 @@ bool hasGoalReached()
   // Vehicle Drifting right/left too much **NOTE: to Tarnpreet Side Tolereance should be large**
   if (abs(sideDistanceDifference) > SIDE_DISTANCE_TOLERANCE)
   {
-    // Serial.println("SIDE DISTANCE FUCKED");
     // @TODO: set right and left motor to same magnitude
     //drive((map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset), (-map(frontDistanceDifference,-2000,2000,-90,90)+motorzerooffset-jaggedValue));
     return false;
@@ -371,7 +369,6 @@ bool hasGoalReached()
   // Vehicle Front Travel Value
   if (abs(frontDistanceDifference) > FRONT_DISTANCE_TOLERANCE)
   {
-    // Serial.println("FRONT DISTANCE FUCKED");
     // @TODO: set right and left motor to same magnitude
     //drive((map(sideDistanceDifference,-2000,2000,-90,90)+motorzerooffset), (-map(sideDistanceDifference,-2000,2000,-90,90)+motorzerooffset));
     return false;
@@ -397,25 +394,13 @@ void loop()
     readLaserSensors();
     updateIMU();
 
-    // Serial.println("Angle Sensor PID Difference: " + String(angleInputDifference));
-    // Serial.println();
-
-    // Serial.println("Front Sensor PID Difference: " + String(frontDistanceDifference));
-    // Serial.println();
-
-    // Serial.println("Side Sensor PID Difference: " + String(sideDistanceDifference));
-    // Serial.println();
-
-    Serial.println("RAW VALUE: " + String(getFrontDistanceSensor()));
+    Serial.println("Angle Sensor PID Difference: " + String(angleInputDifference));
     Serial.println();
 
-    Serial.println("Difference VALUE: " + String(frontDistanceDifference));
+    Serial.println("Front Sensor PID Difference: " + String(frontDistanceDifference));
     Serial.println();
 
-    // Serial.println("Rawvalue: " + String(myIMU.my));
-    // Serial.println();
-
-    Serial.println("Compass: " + String(getCompassSensor()));
+    Serial.println("Side Sensor PID Difference: " + String(sideDistanceDifference));
     Serial.println();
 
     Serial.println("Turncount:" + String(turnCount));
