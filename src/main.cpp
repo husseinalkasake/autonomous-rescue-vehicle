@@ -52,12 +52,8 @@ void setUpLaserSensors()
 {
   pinMode(4, OUTPUT);
   pinMode(5, OUTPUT);
-  pinMode(6, OUTPUT);
-  pinMode(7, OUTPUT);
   digitalWrite(4, LOW);
   digitalWrite(5, LOW);
-  digitalWrite(6, LOW);
-  digitalWrite(7, LOW);
 
   pinMode(4, INPUT_PULLUP);
   delay(150);
@@ -252,15 +248,17 @@ double getLeftDistanceSensor()
 // Motor stuff
 void stopRobot()
 {
-  drive(MOTOR_ZERO_OFFSET,MOTOR_ZERO_OFFSET);
+  drive(MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
 }
 
 int safetyMotor(int value)
 {
-  if (value > MOTOR_MAX ){
+  if (value > MOTOR_MAX)
+  {
     return MOTOR_MAX;
   }
-  if (value < MOTOR_MIN ){
+  if (value < MOTOR_MIN)
+  {
     return MOTOR_MIN;
   }
   return value;
@@ -338,7 +336,7 @@ bool hasGoalReached()
   {
     Serial.println("UNSTABLE");
     // Set both left and right motors to a sensible blind forward distance that we know works
-    drive(MOTOR_ZERO_OFFSET-10, MOTOR_ZERO_OFFSET+10);
+    drive(MOTOR_ZERO_OFFSET - 10, MOTOR_ZERO_OFFSET + 10);
     return false;
   }
 
