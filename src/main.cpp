@@ -343,6 +343,54 @@ long getAngleToMotorValue(double differenceFromDesired)
   return map(differenceFromDesired, -ANGLE_SCALE, ANGLE_SCALE, -MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
 }
 
+// DEMO CODE (FOR CONSTRUCTION CHECK)
+// PUT THIS IN LOOP INSTEAD OF hasGoalReached FOR DEMO
+void constructionCheckDemo()
+{
+  // Desired Point Differences
+  angleInputDifference = getCompassSensor() - ((turnCount * 90) % 360);
+  frontDistanceDifference = getFrontDistanceSensor() - ((TILE_DISTANCE * ((turnCount + 1) / 4)) + tileOffsetDistance);
+  sideDistanceDifference = getLeftDistanceSensor() - ((TILE_DISTANCE * ((turnCount) / 4)) + tileOffsetDistance);
+
+  bool sideDistanceWithinTolerance = abs(sideDistanceDifference) <= SIDE_DISTANCE_TOLERANCE;
+  bool frontDistanceWithinTolerance = abs(frontDistanceDifference) <= FRONT_DISTANCE_TOLERANCE;
+
+  if (abs(angleInputDifference) > ANGLE_TOLERANCE)
+  {
+    // Set right and left motor to opposite magnitude (one is reversed so same value)
+    Serial.println("RIGHT TURN");
+    long motorValue = getAngleToMotorValue(angleInputDifference) + MOTOR_ZERO_OFFSET;
+    drive(motorValue, motorValue);
+  }
+  else if (sideDistanceWithinTolerance && frontDistanceWithinTolerance)
+  {
+    // increment turn count so right turn can happen next time due to angle difference
+    // WORST CASE SCENARIO HARDCODE RIGHT TURN FOR DEMO
+    turnCount++;
+  }
+  else if (sideDistanceWithinTolerance)
+  {
+    // Move forward if side distance within tolerance
+    Serial.println("MOVE FORWARD");
+    drive(MOTOR_ZERO_OFFSET - 10, MOTOR_ZERO_OFFSET + 10);
+    delay(2000);
+    stopRobot();
+  }
+  else if (frontDistanceWithinTolerance)
+  {
+    // Move backward if front distance within tolerance
+    Serial.println("MOVE BACKWARD");
+    long motorValue = getDistanceToMotorValue(frontDistanceDifference) + MOTOR_ZERO_OFFSET;
+    drive(motorValue, -motorValue);
+    delay(2000);
+    stopRobot();
+  }
+  else
+  {
+    stopRobot();
+  }
+}
+
 void setup()
 {
   // Serial stuff setup
@@ -427,37 +475,39 @@ bool hasGoalReached()
 void loop()
 {
   // keep moving till goal reached
-  if (!reachedGoal)
-  {
-    // TODO: COMMENT OUT DELAY AND PRINTS FOR FINAL CODE
-    delay(250);
-    readLaserSensors();
-    updateIMU();
+  // if (!reachedGoal)
+  // {
+  //   // TODO: COMMENT OUT DELAY AND PRINTS FOR FINAL CODE
+  //   delay(250);
+  //   readLaserSensors();
+  //   updateIMU();
 
-    Serial.println("FRONT DISTANCE: " + String(getFrontDistanceSensor()));
-    Serial.println();
+  //   Serial.println("FRONT DISTANCE: " + String(getFrontDistanceSensor()));
+  //   Serial.println();
 
-    Serial.println("SIDE DISTANCE: " + String(getLeftDistanceSensor()));
-    Serial.println();
+  //   Serial.println("SIDE DISTANCE: " + String(getLeftDistanceSensor()));
+  //   Serial.println();
 
-    Serial.println("Angle Sensor PID Difference: " + String(angleInputDifference));
-    Serial.println();
+  //   Serial.println("Angle Sensor PID Difference: " + String(angleInputDifference));
+  //   Serial.println();
 
-    Serial.println("Front Sensor PID Difference: " + String(frontDistanceDifference));
-    Serial.println();
+  //   Serial.println("Front Sensor PID Difference: " + String(frontDistanceDifference));
+  //   Serial.println();
 
-    Serial.println("Side Sensor PID Difference: " + String(sideDistanceDifference));
-    Serial.println();
+  //   Serial.println("Side Sensor PID Difference: " + String(sideDistanceDifference));
+  //   Serial.println();
 
-    Serial.println("Turncount:" + String(turnCount));
+  //   Serial.println("Turncount:" + String(turnCount));
 
-    Serial.println("MOTOR SPEED VALUE: " + String(map(frontDistanceDifference, -DISTANCE_SCALE, DISTANCE_SCALE, -MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET) + MOTOR_ZERO_OFFSET));
-    Serial.println();
+  //   Serial.println("MOTOR SPEED VALUE: " + String(map(frontDistanceDifference, -DISTANCE_SCALE, DISTANCE_SCALE, -MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET) + MOTOR_ZERO_OFFSET));
+  //   Serial.println();
 
-    reachedGoal = hasGoalReached();
-  }
-  else
-  {
-    stopRobot();
-  }
+  //   reachedGoal = hasGoalReached();
+  // }
+  // else
+  // {
+  //   stopRobot();
+  // }
+
+  constructionCheckDemo();
 }
