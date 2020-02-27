@@ -42,7 +42,6 @@ double angleTare = 0;
 double stabilityTare = 0;
 int turnCount = 0;
 bool reachedGoal = false;
-int motorValue = 0;
 
 // Difference Stuff
 double angleInputDifference = 0;
