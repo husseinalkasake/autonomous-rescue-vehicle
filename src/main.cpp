@@ -343,6 +343,16 @@ long getAngleToMotorValue(double differenceFromDesired)
   return map(differenceFromDesired, -ANGLE_SCALE, ANGLE_SCALE, -MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
 }
 
+void demoCode()
+{
+  drive(MOTOR_MAX,MOTOR_MIN);
+  delay(3000);
+  drive(MOTOR_MAX,MOTOR_MAX);
+  delay(3000);
+  drive(MOTOR_MIN,MOTOR_MAX);
+  delay(3000);
+  drive(MOTOR_ZERO_OFFSET,MOTOR_ZERO_OFFSET);
+}
 void setup()
 {
   // Serial stuff setup
@@ -361,9 +371,10 @@ void setup()
   stabilityTare = getStableSensor();
 
   setUpMotors();
-  motorLeft.write(89);
-  motorRight.write(89);
-  delay(1000);
+  motorLeft.write(MOTOR_ZERO_OFFSET);
+  motorRight.write(MOTOR_ZERO_OFFSET);
+  delay(5000);
+  demoCode();
 }
 
 // TODO: COMMENT OUT SERIAL PRINTS FOR FINAL CODE
