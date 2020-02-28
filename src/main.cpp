@@ -1,3 +1,4 @@
+/* LIBRARIES */
 #include <Arduino.h>
 #include <stdlib.h>
 #include <VL53L1X.h>
@@ -6,23 +7,9 @@
 #include "quaternionFilters.h"
 #include <Servo.h>
 
-// Define Wire Clock
-#define WIRE_CLOCK 400000
-
-// Declare laser sensors
-VL53L1X frontSensor;
-VL53L1X leftSensor;
-
-// Declare IMU
-#define MPU9250_ADDRESS MPU9250_ADDRESS_AD0
-MPU9250 myIMU(MPU9250_ADDRESS, Wire, WIRE_CLOCK);
-
-// Declare servo for motors
-Servo motorLeft;
-Servo motorRight;
-
-// Constant Definitions
-// TODO: Adjust tolerance to viable numbers
+/* MACROS */
+#define WIRE_CLOCK 400000 // Define Wire Clock
+#define MPU9250_ADDRESS MPU9250_ADDRESS_AD0 // Define Addresses
 #define STABILITY_TOLERANCE 200      // Assume degrees
 #define ANGLE_TOLERANCE 5           // Assume degrees
 #define FRONT_DISTANCE_TOLERANCE 70 // Assume cm
@@ -38,7 +25,20 @@ Servo motorRight;
 #define ANGLE_SCALE 360
 #define TIME_OUT 100
 
-// Global Variables
+/* SENSOR DECLARATION */
+// Declare laser sensors
+VL53L1X frontSensor;
+VL53L1X leftSensor;
+
+// Declare IMU
+MPU9250 myIMU(MPU9250_ADDRESS, Wire, WIRE_CLOCK);
+
+// Declare servo for motors
+Servo motorLeft;
+Servo motorRight;
+
+/* GlOBALS */
+// Parameters
 double angleTare = 0;
 double stabilityTare = 0;
 int turnCount = 0;
@@ -49,6 +49,8 @@ double angleInputDifference = 0;
 double frontDistanceDifference = 0;
 double sideDistanceDifference = 0;
 
+
+/* COMPONENTS SETUP */
 // ToF Laser Sensor Setup
 void setUpLaserSensors()
 {
@@ -188,6 +190,7 @@ void setUpIMU()
   }
 }
 
+// Motor Setup
 void setUpMotors()
 {
   // set pin, min and max values for each motor servo
@@ -196,13 +199,15 @@ void setUpMotors()
   motorRight.attach(10, 1000, 2000);
 }
 
-// Sensor Update
+/* UPDATE COMPONENTS */
+// ToF Sensor Update
 void readLaserSensors()
 {
   frontSensor.read();
   leftSensor.read();
 }
 
+// IMU Sensor Update
 void updateIMU()
 {
   if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
@@ -219,28 +224,34 @@ void updateIMU()
   }
 }
 
+/* GETTERS FOR SENSOR VALUE */
+// Get Stability Angle
 double getStableSensor()
 {
   // TODO: TEST TO SEE IF X OR Y AXIS SHOULD BE USED
   return (atan2(myIMU.mz, myIMU.mx) * 180. / PI) + 180 - stabilityTare;
 }
 
+// Get Compass Angle
 double getCompassSensor()
 {
   return (atan2(myIMU.my, myIMU.mx) * 180. / PI) + 180 - angleTare;
 }
 
+// Get Front Distance Sensor Value
 double getFrontDistanceSensor()
 {
   return frontSensor.ranging_data.range_mm;
 }
 
+// Get Left Distance Sensor Value
 double getLeftDistanceSensor()
 {
   return leftSensor.ranging_data.range_mm;
 }
 
-// Motor stuff
+/* MOTOR FUNCTIONS*/
+// Saturation Filter for motor values to make sure motor doesn't get burnt
 int safetyMotor(int value)
 {
   if (value > MOTOR_MAX)
@@ -254,6 +265,7 @@ int safetyMotor(int value)
   return value;
 }
 
+// Drive Function that writes to motors
 void drive(int leftValue, int rightValue)
 {
   leftValue = safetyMotor(leftValue);
@@ -267,46 +279,26 @@ void drive(int leftValue, int rightValue)
   Serial.println("MOTOR RIGHT VALUE" + String(rightValue));
 }
 
+// Stop the Motors
 void stopRobot()
 {
   drive(MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
 }
 
-// return motor value based on difference from desired point
+/* SCALE FUNCTIONS */
+// Map distance difference value to motor value
 long getDistanceToMotorValue(double differenceFromDesired)
 {
   return map(differenceFromDesired, -DISTANCE_SCALE, DISTANCE_SCALE, -MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
 }
 
+// Map angle difference value to motor value
 long getAngleToMotorValue(double differenceFromDesired)
 {
   return map(differenceFromDesired, -ANGLE_SCALE, ANGLE_SCALE, -MOTOR_ZERO_OFFSET, MOTOR_ZERO_OFFSET);
 }
 
-void setup()
-{
-  // Serial stuff setup
-  Serial.begin(115200);
-  Wire.begin();
-  Wire.setClock(WIRE_CLOCK);
-
-  // sensor setup
-  setUpLaserSensors();
-  setUpIMU();
-  setUpMotors();
-  drive(MOTOR_ZERO_OFFSET,MOTOR_ZERO_OFFSET);
-  delay(TIME_OUT*50);
-  updateIMU();
-  delay(TIME_OUT*10);
-  readLaserSensors();
-
-  // set values
-  delay(TIME_OUT*10);
-  angleTare = getCompassSensor();
-  stabilityTare = getStableSensor();
-}
-
-// TODO: COMMENT OUT SERIAL PRINTS FOR FINAL CODE
+/* MAIN CONTROLLER FUNCTION*/
 bool hasGoalReached()
 {
   // Desired Point Differences
@@ -363,6 +355,30 @@ bool hasGoalReached()
     return false;
   }
   return true;
+}
+
+/* ARDUINO MAIN FUNCTIONS */
+void setup()
+{
+  // Serial stuff setup
+  Serial.begin(115200);
+  Wire.begin();
+  Wire.setClock(WIRE_CLOCK);
+
+  // sensor setup
+  setUpLaserSensors();
+  setUpIMU();
+  setUpMotors();
+  drive(MOTOR_ZERO_OFFSET,MOTOR_ZERO_OFFSET);
+  delay(TIME_OUT*50);
+  updateIMU();
+  delay(TIME_OUT*10);
+  readLaserSensors();
+
+  // set values
+  delay(TIME_OUT*10);
+  angleTare = getCompassSensor();
+  stabilityTare = getStableSensor();
 }
 
 void loop()
