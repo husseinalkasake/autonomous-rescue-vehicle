@@ -29,12 +29,12 @@
 #define STABILITY_TOLERANCE 100 // Assume degrees
 #define ANGLE_TOLERANCE 20      // Assume degrees
 #define FRONT_ALIGN_TOLERANCE 5
-#define FRONT_DISTANCE_TOLERANCE 50  // Assume mm
+#define FRONT_DISTANCE_TOLERANCE 100 // Assume mm
 #define SIDE_DISTANCE_TOLERANCE 1000 // Assume mm
 #define MOTOR_MAX 120
 #define MOTOR_MIN 70
 #define TILE_DISTANCE 300
-#define GAP_DISTANCE 40
+#define GAP_DISTANCE 100
 #define SIDE_GAP_DISTANCE 100
 #define JAGGED_VALUE 5
 #define DISTANCE_SCALE 2500
@@ -290,13 +290,13 @@ void getOutOfHole()
   digitalWrite(MOTOR_RIGHT_PIN_2, HIGH);
   analogWrite(MOTOR_LEFT_ENABLE_PIN, 150);
   analogWrite(MOTOR_RIGHT_ENABLE_PIN, 150);
-  delay(100);
-  while (abs(getStableSensor()) < 4)
+  delay(1000);
+  while (abs(getStableSensor()) > 4)
   {
     readIMU();
   }
-  analogWrite(MOTOR_LEFT_ENABLE_PIN, 75);
-  analogWrite(MOTOR_RIGHT_ENABLE_PIN, 75);
+  analogWrite(MOTOR_LEFT_ENABLE_PIN, 85);
+  analogWrite(MOTOR_RIGHT_ENABLE_PIN, 85);
 }
 
 /* SCALE FUNCTIONS */
