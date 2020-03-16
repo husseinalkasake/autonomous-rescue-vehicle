@@ -7,7 +7,6 @@
 #include <utility/imumaths.h>
 
 /* MACROS */
-#define WIRE_CLOCK 400000                // Define Wire Clock
 #define BNO055_SAMPLERATE_DELAY_MS (100) // Define Delay between IMU Samples
 #define BNO055_ADDRESS 0x28              // Define IMU Address
 
@@ -34,9 +33,6 @@
 #define MOTOR_MIN 70
 #define TILE_DISTANCE 300
 #define GAP_DISTANCE 230
-#define SIDE_GAP_DISTANCE 200
-#define DISTANCE_SCALE 2500
-#define ANGLE_SCALE 180
 #define MOTOR_BLIND_FORWARD 85
 #define MOTOR_GET_OUT_OF_HOLE_SPEED 150
 
@@ -57,7 +53,6 @@ bool reachedGoal = false;
 // Difference Stuff
 double angleInputDifference = 0;
 double frontDistanceDifference = 0;
-double sideDistanceDifference = 0;
 
 /* UPDATE COMPONENTS */
 // ToF Sensor Update
@@ -246,14 +241,6 @@ bool hasGoalReached()
     angleInputDifference = angleInputDifference - 360;
   }
   frontDistanceDifference = getFrontDistanceSensor() - ((TILE_DISTANCE * ((turnCount + 1) / 4)) + GAP_DISTANCE);
-  sideDistanceDifference = getLeftDistanceSensor() - ((TILE_DISTANCE * ((turnCount) / 4)) + SIDE_GAP_DISTANCE);
-  //Vehicle Tilted
-  //  if (abs(getStableSensor()) > STABILITY_TOLERANCE)
-  //  {
-  //    Serial.println("UNSTABLE");
-  //    drive(MOTOR_BLIND_FORWARD, MOTOR_BLIND_FORWARD);
-  //    return false;
-  //  }
 
   int stableSensor = getStableSensor();
   if (stableSensor < -8)
@@ -280,7 +267,6 @@ bool hasGoalReached()
 
     return false;
   }
-  //  // Vehicle Drifting right/left too much
 
   // Vehicle Front Travel Value
   if (abs(frontDistanceDifference) > FRONT_DISTANCE_TOLERANCE)
@@ -332,10 +318,11 @@ bool hasGoalReached()
 void setup()
 {
   //Set pins
-  pinMode(6, OUTPUT);
-  pinMode(7, OUTPUT);
-  digitalWrite(6, LOW);
-  digitalWrite(7, LOW);
+  pinMode(FRONT_LASER_SENSOR_PIN, OUTPUT);
+  pinMode(LEFT_LASER_SENSOR_PIN, OUTPUT);
+  digitalWrite(FRONT_LASER_SENSOR_PIN, LOW);
+  digitalWrite(LEFT_LASER_SENSOR_PIN, LOW);
+
   pinMode(MOTOR_RIGHT_ENABLE_PIN, OUTPUT);
   pinMode(MOTOR_RIGHT_PIN_1, OUTPUT);
   pinMode(MOTOR_RIGHT_PIN_2, OUTPUT);
@@ -358,7 +345,7 @@ void setup()
     while (1)
       ;
   }
-  frontSensor.setAddress(0x05);
+  frontSensor.setAddress(FRONT_LASER_SENSOR_ADDRESS);
 
   pinMode(7, INPUT_PULLUP);
   delay(150);
@@ -370,7 +357,7 @@ void setup()
     while (1)
       ;
   }
-  leftSensor.setAddress(0x10);
+  leftSensor.setAddress(LEFT_LASER_SENSOR_ADDRESS);
 
   //Adjustable parameters for TOF sensors
   frontSensor.setDistanceMode(VL53L1X::Long);
@@ -401,8 +388,6 @@ void loop()
     Serial.println("Angle Sensor PID Difference: " + String(angleInputDifference));
     Serial.println();
     Serial.println("Front Sensor PID Difference: " + String(frontDistanceDifference));
-    Serial.println();
-    Serial.println("Side Sensor PID Difference: " + String(sideDistanceDifference));
     Serial.println();
     Serial.println("Stability PID Difference: " + String(getStableSensor() - STABILITY_TOLERANCE));
     Serial.println();
